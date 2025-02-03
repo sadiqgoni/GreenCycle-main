@@ -97,15 +97,56 @@ class CompanyServiceRequestResource extends Resource
                 Tables\Columns\TextColumn::make('final_amount')
                     ->default('pending')
                     ->money('NGN'),
-                Tables\Columns\TextColumn::make('company_payout_amount')
-                    ->label('Company Balance')
-                    ->default('pending')
-                    ->money('NGN'),
-                Tables\Columns\TextColumn::make('admin_commission_amount')
-                    ->label('Admin Balance')
-
-                    ->default('pending')
-                    ->money('NGN')
+                Tables\Columns\TextColumn::make('payment_status')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'completed' => 'success',
+                        'pending' => 'warning',
+                        'failed' => 'danger',
+                    })
+                    ->formatStateUsing(fn($record) => $record->payment?->status ?? 'pending'),
+                Tables\Columns\TextColumn::make('company_notes')
+                    ->label('Company Notes')
+                    ->placeholder('No notes'),
+                // Tables\Columns\TextColumn::make('estimated_duration')
+                //     ->label('Estimated Duration (hours)')
+                //     ->placeholder('Not set'),
+                // Tables\Columns\TextColumn::make('scheduled_date')
+                //     ->date()
+                //     ->placeholder('Not scheduled'),
+                // Tables\Columns\TextColumn::make('scheduled_time')
+                //     ->time()
+                //     ->placeholder('Not scheduled'),
+                // Tables\Columns\TextColumn::make('started_at')
+                //     ->date()
+                //     ->placeholder('Not started')
+                //     ->formatStateUsing(fn ($state) => $state ? $state : null),
+                // Tables\Columns\TextColumn::make('completed_at')
+                //     ->date()
+                //     ->placeholder('Not completed')
+                //     ->formatStateUsing(fn ($state) => $state ? $state : null),
+                // Tables\Columns\TextColumn::make('company_payout_amount')
+                //     ->label('Company Balance')
+                //     ->default('pending')
+                //     ->money('NGN'),
+                // Tables\Columns\TextColumn::make('company_notes')
+                //     ->label('Company Notes')
+                //     ->default('pending'),
+                // Tables\Columns\TextColumn::make('estimated_duration')
+                //     ->label('Estimated Duration (hours)')
+                //     ->default('pending'),
+                // Tables\Columns\TextColumn::make('scheduled_date')
+                //     ->date()
+                //     ->default('pending'),
+                // Tables\Columns\TextColumn::make('scheduled_time')
+                //     ->time()
+                //     ->default('pending'),
+                // Tables\Columns\TextColumn::make('started_at')
+                //     ->date()
+                //     ->default('pending'),
+                // Tables\Columns\TextColumn::make('completed_at')
+                //     ->date()
+                //     ->default('pending'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -116,8 +157,8 @@ class CompanyServiceRequestResource extends Resource
                         'completed' => 'Completed',
                         'paid' => 'Paid',
                         'cancelled' => 'Cancelled',
+                        'dispute' => 'In Dispute',
                     ]),
-
             ])
             ->actions([
                 Tables\Actions\Action::make('place_bid')
@@ -225,6 +266,7 @@ class CompanyServiceRequestResource extends Resource
                             'completed_at' => now(),
                         ]);
                     }),
+                    
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

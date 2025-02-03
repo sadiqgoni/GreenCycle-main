@@ -96,74 +96,74 @@ class AdminServiceRequestResource extends Resource
                     ]),
 
             ])
-            ->actions([
+            // ->actions([
 
-                Tables\Actions\Action::make('confirm_payment')
-                    ->visible(fn($record) => $record->payment && $record->payment->status === 'pending')
-                    ->requiresConfirmation()
-                    ->action(function (ServiceRequest $record): void {
-                        $payment = $record->payment;
-                        $payment->update([
-                            'status' => 'confirmed',
-                            'paid_at' => now(),
-                        ]);
-                        $record->update(attributes: [
-                            'status' => 'paid',
-                        ]);
-                    }),
-                Tables\Actions\Action::make('process_commission')
-                    ->visible(
-                        fn($record) =>
-                        $record->status === 'completed' &&
-                        $record->payment &&
-                        $record->payment->status === 'confirmed' && // Ensure payment is confirmed
-                        !$record->commission_paid_at
-                    )
-                    ->modalWidth(\Filament\Support\Enums\MaxWidth::Medium)
-                    ->modalButton('Payment')
-                    ->form([
-                        Forms\Components\TextInput::make('commission_percentage')
-                            ->label('Commission Percentage (%)')
-                            ->default(10)
-                            ->numeric()
-                            ->reactive() // Make it reactive
-                            ->afterStateUpdated(function ($state, callable $set, $get) {
-                                $final_amount = (float) preg_replace('/[^0-9.]/', '', $get('final_amount'));
-                                $set('commission_preview', $final_amount * ($state / 100)); // Update preview dynamically
-                            }),
-                        Forms\Components\Placeholder::make('commission_preview')
-                            ->label('Commission Amount')
-                            ->content(function ($state, callable $set, $record) {
-                                $amount = $record->final_amount;
+            //     Tables\Actions\Action::make('confirm_payment')
+            //         ->visible(fn($record) => $record->payment && $record->payment->status === 'pending')
+            //         ->requiresConfirmation()
+            //         ->action(function (ServiceRequest $record): void {
+            //             $payment = $record->payment;
+            //             $payment->update([
+            //                 'status' => 'confirmed',
+            //                 'paid_at' => now(),
+            //             ]);
+            //             $record->update(attributes: [
+            //                 'status' => 'paid',
+            //             ]);
+            //         }),
+            //     Tables\Actions\Action::make('process_commission')
+            //         ->visible(
+            //             fn($record) =>
+            //             $record->status === 'completed' &&
+            //             $record->payment &&
+            //             $record->payment->status === 'confirmed' && // Ensure payment is confirmed
+            //             !$record->commission_paid_at
+            //         )
+            //         ->modalWidth(\Filament\Support\Enums\MaxWidth::Medium)
+            //         ->modalButton('Payment')
+            //         ->form([
+            //             Forms\Components\TextInput::make('commission_percentage')
+            //                 ->label('Commission Percentage (%)')
+            //                 ->default(10)
+            //                 ->numeric()
+            //                 ->reactive() // Make it reactive
+            //                 ->afterStateUpdated(function ($state, callable $set, $get) {
+            //                     $final_amount = (float) preg_replace('/[^0-9.]/', '', $get('final_amount'));
+            //                     $set('commission_preview', $final_amount * ($state / 100)); // Update preview dynamically
+            //                 }),
+            //             Forms\Components\Placeholder::make('commission_preview')
+            //                 ->label('Commission Amount')
+            //                 ->content(function ($state, callable $set, $record) {
+            //                     $amount = $record->final_amount;
 
-                                return '₦' . number_format($amount, 2);
-                            }),
+            //                     return '₦' . number_format($amount, 2);
+            //                 }),
 
-                        Forms\Components\Placeholder::make('company_payout')
-                            ->label('Company Payout Amount')
-                            ->content(function ($get, $record) {
-                                $percentage = (float) preg_replace('/[^0-9.]/', '', $get('commission_percentage'));
+            //             Forms\Components\Placeholder::make('company_payout')
+            //                 ->label('Company Payout Amount')
+            //                 ->content(function ($get, $record) {
+            //                     $percentage = (float) preg_replace('/[^0-9.]/', '', $get('commission_percentage'));
 
-                                // $percentage = $get('commission_percentage') ?? 10;
-                                $amount = $record->final_amount * ($percentage / 100);
-                                return '₦' . number_format($amount, 2);
-                            }),
-                    ])
-                    ->action(function (ServiceRequest $record, array $data): void {
-                        $commissionPercentage = $data['commission_percentage'];
-                        $commissionAmount = $record->final_amount * ($commissionPercentage / 100);
-                        $companyPayout = $record->final_amount - $commissionAmount;
+            //                     // $percentage = $get('commission_percentage') ?? 10;
+            //                     $amount = $record->final_amount * ($percentage / 100);
+            //                     return '₦' . number_format($amount, 2);
+            //                 }),
+            //         ])
+            //         ->action(function (ServiceRequest $record, array $data): void {
+            //             $commissionPercentage = $data['commission_percentage'];
+            //             $commissionAmount = $record->final_amount * ($commissionPercentage / 100);
+            //             $companyPayout = $record->final_amount - $commissionAmount;
 
-                        // Update the ServiceRequest with commission details
-                        $record->update([
-                            'admin_commission_percentage' => $commissionPercentage,
-                            'admin_commission_amount' => $commissionAmount,
-                            'company_payout_amount' => $companyPayout,
-                            'commission_paid_at' => now(),
-                        ]);
-                    })
+            //             // Update the ServiceRequest with commission details
+            //             $record->update([
+            //                 'admin_commission_percentage' => $commissionPercentage,
+            //                 'admin_commission_amount' => $commissionAmount,
+            //                 'company_payout_amount' => $companyPayout,
+            //                 'commission_paid_at' => now(),
+            //             ]);
+            //         })
 
-            ])
+            // ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),

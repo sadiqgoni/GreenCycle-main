@@ -26,14 +26,10 @@ class ServiceRequest extends Model
         'description',
         'payment_amount',
         'payment_status',
-        'admin_commission_percentage',
-        'admin_commission_amount',
-        'company_payout_amount',
         'final_amount',
         'payment_id',
         'completed_at',
         'payment_received_at',
-        'commission_paid_at',
         'completion_notes',
         'completion_photos',
         'company_user_id',
@@ -41,12 +37,9 @@ class ServiceRequest extends Model
     ];
     protected $casts = [
         'payment_amount' => 'decimal:2',
-        'admin_commission_amount' => 'decimal:2',
-        'company_payout_amount' => 'decimal:2',
         'final_amount' => 'decimal:2',
         'completed_at' => 'datetime',
-        'payment_received_at' => 'datetime',
-        'commission_paid_at' => 'datetime'
+        'payment_received_at' => 'datetime'
     ];
     
 

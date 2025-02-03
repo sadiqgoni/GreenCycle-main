@@ -128,14 +128,15 @@ class HouseholdServiceRequestResource extends Resource
                 Tables\Actions\Action::make('view_account')
                     ->label('Make Payment')
                     ->visible(fn($record) => $record->accepted_company_id)
-
-                    ->modalHeading('Open Account Information')
+                    ->modalHeading('Make Direct Payment to Company')
                     ->modalWidth(\Filament\Support\Enums\MaxWidth::Medium)
                     ->form([
                         Forms\Components\Placeholder::make('amount_to_pay')
                             ->label('Amount to Pay')
                             ->content(fn($record) => '₦' . number_format($record->final_amount, 2)),
-
+                        Forms\Components\Placeholder::make('company_name')
+                            ->label('Company')
+                            ->content(fn($record) => Company::find($record->accepted_company_id)?->company_name ?? 'Unknown'),
                         Forms\Components\Select::make('payment_method')
                             ->options([
                                 'credit_card' => 'Credit Card',
@@ -147,14 +148,12 @@ class HouseholdServiceRequestResource extends Resource
                         $openAccount = AccountInformation::where('status', 'open')->first();
 
                         if (!$openAccount) {
-                            // Return a Blade view to handle no accounts
                             return view('filament.resources.account-modal', [
                                 'account' => null,
                                 'errorMessage' => 'No open accounts are available.',
                             ]);
                         }
 
-                        // Return the Blade view with the account details
                         return view('filament.resources.account-modal', [
                             'account' => $openAccount,
                             'errorMessage' => null,
@@ -166,16 +165,19 @@ class HouseholdServiceRequestResource extends Resource
                             'method' => $data['payment_method'],
                             'amount' => $record->final_amount,
                             'status' => 'pending',
+                            'paid_at' => now(),
                         ]);
-                        $record->update(['status' => 'payment_sent']);
+                        $record->update([
+                            'status' => 'paid',
+                            'payment_received_at' => now(),
+                        ]);
                         Notification::make()
-                            ->title('Payment marked as completed')
-                            ->body('Waiting for admin verification....')
+                            ->title('Payment Completed')
+                            ->body('Payment has been sent directly to the company. You can now track the service progress.')
                             ->success()
                             ->send();
                     })
-
-                    ->modalButton('Payment')
+                    ->modalButton('Complete Payment')
                     ->icon('heroicon-o-currency-dollar')
                     ->color('primary'),
 
