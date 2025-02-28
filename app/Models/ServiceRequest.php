@@ -34,12 +34,16 @@ class ServiceRequest extends Model
         'completion_photos',
         'company_user_id',
         'accepted_company_id',
+        'household_completion_photos',
+        'household_completion_notes',
     ];
     protected $casts = [
         'payment_amount' => 'decimal:2',
         'final_amount' => 'decimal:2',
         'completed_at' => 'datetime',
-        'payment_received_at' => 'datetime'
+        'payment_received_at' => 'datetime',
+        'completion_photos' => 'json',
+        'household_completion_photos' => 'json'
     ];
     
 

@@ -29,7 +29,7 @@ class HouseholdServiceRequestResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('household_id', auth()->id());
+            ->where('household_id', auth()?->getUser()?->id ?? null);
     }
     public static function form(Form $form): Form
     {
@@ -164,11 +164,12 @@ class HouseholdServiceRequestResource extends Resource
                             'service_request_id' => $record->id,
                             'method' => $data['payment_method'],
                             'amount' => $record->final_amount,
-                            'status' => 'pending',
+                            'status' => 'confirmed',
                             'paid_at' => now(),
                         ]);
                         $record->update([
                             'status' => 'paid',
+                            'payment_status' => 'confirmed',
                             'payment_received_at' => now(),
                         ]);
                         Notification::make()
@@ -180,6 +181,40 @@ class HouseholdServiceRequestResource extends Resource
                     ->modalButton('Complete Payment')
                     ->icon('heroicon-o-currency-dollar')
                     ->color('primary'),
+
+                Tables\Actions\Action::make('upload_completion_photos')
+                    ->visible(fn($record) => $record->status === 'completed')
+                    ->icon('heroicon-o-camera')
+                    ->form([
+                        Forms\Components\FileUpload::make('household_completion_photos')
+                            ->label('Upload Service Completion Photos')
+                            ->multiple()
+                            ->disk('public')
+                            ->directory('household-completion-photos')
+                            ->preserveFilenames()
+                            ->required(),
+                        Forms\Components\Textarea::make('household_completion_notes')
+                            ->label('Add Your Notes (Optional)')
+                            ->maxLength(500),
+                    ])
+                    ->action(function (ServiceRequest $record, array $data): void {
+                        $photos = $data['household_completion_photos'];
+                        
+                        // Ensure we're working with an array
+                        if (!is_array($photos)) {
+                            $photos = [$photos];
+                        }
+                        
+                        $record->update([
+                            'household_completion_photos' => $photos,
+                            'household_completion_notes' => $data['household_completion_notes'] ?? null,
+                        ]);
+                        
+                        Notification::make()
+                            ->title('Photos Uploaded Successfully')
+                            ->success()
+                            ->send();
+                    }),
 
                 // Tables\Actions\Action::make('cancel_request')
                 //     ->visible(fn($record) => in_array($record->status, ['accepted', 'assigned']))

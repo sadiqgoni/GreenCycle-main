@@ -103,6 +103,7 @@ class CompanyServiceRequestResource extends Resource
                         'completed' => 'success',
                         'pending' => 'warning',
                         'failed' => 'danger',
+                        'confirmed' => 'success'
                     })
                     ->formatStateUsing(fn($record) => $record->payment?->status ?? 'pending'),
                 Tables\Columns\TextColumn::make('company_notes')
