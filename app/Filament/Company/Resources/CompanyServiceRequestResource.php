@@ -5,7 +5,8 @@ namespace App\Filament\Company\Resources;
 use App\Filament\Company\Resources\CompanyServiceRequestResource\Pages;
 use App\Filament\Company\Resources\CompanyServiceRequestResource\RelationManagers;
 use App\Models\ServiceRequest;
-use DB;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -36,8 +37,8 @@ class CompanyServiceRequestResource extends Resource
     {
         return parent::getEloquentQuery()
             ->whereHas('companyServiceRequest', function ($query) {
-                $query->where('company_user_id', auth()->id())
-                    ->whereIn('status', ['pending', 'bid', 'accepted']); // Include only specific statuses
+                $query->where('company_user_id', Auth::id())
+                    ->whereIn('status', ['pending', 'bid', 'accepted']);
             });
     }
 
@@ -85,6 +86,7 @@ class CompanyServiceRequestResource extends Resource
                         'in_progress' => 'info',
                         'awaiting_payment' => 'warning',
                         'payment_sent' => 'info',
+                        'payment_released' => 'info',
                         'completed' => 'success',
                         'paid' => 'success',
                         'cancelled' => 'danger',
@@ -109,6 +111,9 @@ class CompanyServiceRequestResource extends Resource
                 Tables\Columns\TextColumn::make('company_notes')
                     ->label('Company Notes')
                     ->placeholder('No notes'),
+                Tables\Columns\ViewColumn::make('waste_photos')
+                    ->label('Waste Photos')
+                    ->view('filament.tables.columns.waste-photos'),
                 // Tables\Columns\TextColumn::make('estimated_duration')
                 //     ->label('Estimated Duration (hours)')
                 //     ->placeholder('Not set'),
@@ -165,6 +170,30 @@ class CompanyServiceRequestResource extends Resource
                 Tables\Actions\Action::make('place_bid')
                     ->label('Place Bid')
                     ->form([
+                        Forms\Components\Placeholder::make('waste_photos')
+                            ->label('Waste Photos')
+                            ->content(function ($record) {
+                                if (!$record->waste_photos) {
+                                    return '<div class="text-gray-500">No waste photos uploaded</div>';
+                                }
+
+                                $photos = is_array($record->waste_photos) 
+                                    ? $record->waste_photos 
+                                    : json_decode($record->waste_photos, true);
+
+                                if (!is_array($photos)) {
+                                    return '<div class="text-gray-500">Invalid photo data</div>';
+                                }
+
+                                $html = '<div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">';
+                                foreach ($photos as $photo) {
+                                    $html .= '<div style="margin: 5px;">';
+                                    $html .= '<img src="' . asset('storage/' . $photo) . '" style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px;">';
+                                    $html .= '</div>';
+                                }
+                                $html .= '</div>';
+                                return new \Illuminate\Support\HtmlString($html);
+                            }),
                         Forms\Components\TextInput::make('bid_amount')
                             ->label('Bid Amount')
                             ->required()
@@ -181,7 +210,7 @@ class CompanyServiceRequestResource extends Resource
                             ->updateOrInsert(
                                 [
                                     'service_request_id' => $record->id,
-                                    'company_user_id' => auth()->id(),
+                                    'company_user_id' => Auth::id(),
                                 ],
                                 [
                                     'bid_amount' => $data['bid_amount'],
@@ -200,7 +229,7 @@ class CompanyServiceRequestResource extends Resource
                     ->visible(fn($record) => $record->accepted_company_id === null),
 
                 Tables\Actions\Action::make('chosen_company')
-                    ->visible(fn($record) => $record->company_user_id === auth()->id())
+                    ->visible(fn($record) => $record->company_user_id === Auth::id())
                     ->color('success')
                     ->icon('heroicon-o-check')
                     ->requiresConfirmation()

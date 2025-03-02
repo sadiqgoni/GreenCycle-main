@@ -56,15 +56,26 @@ class HouseholdServiceRequestResource extends Resource
                             'above_50kg' => 'Above 50 kg',
                         ])
                         ->required(),
+                    Forms\Components\FileUpload::make('waste_photos')
+                        ->label('Upload Waste Photos')
+                        ->helperText('Upload photos of the waste to help companies assess and provide accurate quotes')
+                        ->multiple()
+                        ->disk('public')
+                        ->directory('waste-photos')
+                        ->preserveFilenames()
+                        ->required()
+                        ->columnSpan(2),
                     Forms\Components\Textarea::make('description')
+                        ->label('Additional Details')
+                        ->helperText('Provide any additional information about the waste or special handling requirements')
                         ->columnSpan(2)
                         ->maxLength(1000),
-
-
                     Forms\Components\DatePicker::make('preferred_date')
-                    ,
+                        ->label('Preferred Collection Date')
+                        ->required(),
                     Forms\Components\TimePicker::make('preferred_time')
-                    ,
+                        ->label('Preferred Collection Time')
+                        ->required(),
                 ])
         ]);
     }
@@ -98,6 +109,7 @@ class HouseholdServiceRequestResource extends Resource
                         'awaiting_payment' => 'warning',
                         'payment_sent' => 'info',
                         'in_progress' => 'info',
+                        'payment_released' => 'info',
                         'completed' => 'success',
                         'paid' => 'success',
                         'cancelled' => 'danger',
@@ -128,38 +140,88 @@ class HouseholdServiceRequestResource extends Resource
                 Tables\Actions\Action::make('view_account')
                     ->label('Make Payment')
                     ->visible(fn($record) => $record->accepted_company_id)
-                    ->modalHeading('Make Direct Payment to Company')
+                    ->modalHeading('Payment Gateway')
                     ->modalWidth(\Filament\Support\Enums\MaxWidth::Medium)
                     ->form([
                         Forms\Components\Placeholder::make('amount_to_pay')
                             ->label('Amount to Pay')
                             ->content(fn($record) => '₦' . number_format($record->final_amount, 2)),
                         Forms\Components\Placeholder::make('company_name')
-                            ->label('Company')
+                            ->label('Service Provider')
                             ->content(fn($record) => Company::find($record->accepted_company_id)?->company_name ?? 'Unknown'),
                         Forms\Components\Select::make('payment_method')
+                            ->label('Select Payment Method')
                             ->options([
-                                'credit_card' => 'Credit Card',
+                                'credit_card' => 'Credit/Debit Card',
                                 'bank_transfer' => 'Bank Transfer',
+                                // 'ussd' => 'USSD Payment',
                             ])
+                            ->reactive()
                             ->required(),
+                        Forms\Components\Grid::make()
+                            ->schema(fn (Forms\Get $get) => match ($get('payment_method')) {
+                                'credit_card' => [
+                                    Forms\Components\TextInput::make('card_number')
+                                        ->label('Card Number')
+                                        ->placeholder('**** **** **** ****')
+                                        ->mask('9999 9999 9999 9999')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('expiry')
+                                        ->label('Expiry Date')
+                                        ->placeholder('MM/YY')
+                                        ->mask('99/99')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('cvv')
+                                        ->label('CVV')
+                                        ->placeholder('***')
+                                        ->mask('999')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('card_name')
+                                        ->label('Name on Card')
+                                        ->required(),
+                                ],
+                                'bank_transfer' => [
+                                    Forms\Components\Placeholder::make('bank_details')
+                                        ->label('Bank Transfer Details')
+                                        ->content(function ($record) {
+                                            $account = AccountInformation::where('status', 'open')->first();
+                                            
+                                            if (!$account) {
+                                                return '<div class="text-danger">No bank account is currently available for payment.</div>';
+                                            }
+
+                                            return view('filament.resources.account-modal', [
+                                                'account' => $account,
+                                                'amount' => number_format($record->final_amount, 2),
+                                                'reference' => 'GC' . $record->id,
+                                            ]);
+                                        }),
+                                ],
+                                // 'ussd' => [
+                                //     Forms\Components\Placeholder::make('ussd_code')
+                                //         ->label('USSD Payment Instructions')
+                                //         ->content(function ($record) {
+                                //             return "
+                                //                 <div class='space-y-2'>
+                                //                     <p class='font-medium'>Follow these steps:</p>
+                                //                     <ol class='list-decimal list-inside space-y-1'>
+                                //                         <li>Dial *123*12345#</li>
+                                //                         <li>Select Option 1 (Payment)</li>
+                                //                         <li>Enter Amount: {$record->final_amount}</li>
+                                //                         <li>Enter Reference: GC{$record->id}</li>
+                                //                         <li>Confirm payment with your PIN</li>
+                                //                     </ol>
+                                //                 </div>
+                                //             ";
+                                //         })->extraAttributes(['class' => 'prose']),
+                                // ],
+                                default => [],
+                            }),
                     ])
-                    ->modalContent(function () {
-                        $openAccount = AccountInformation::where('status', 'open')->first();
-
-                        if (!$openAccount) {
-                            return view('filament.resources.account-modal', [
-                                'account' => null,
-                                'errorMessage' => 'No open accounts are available.',
-                            ]);
-                        }
-
-                        return view('filament.resources.account-modal', [
-                            'account' => $openAccount,
-                            'errorMessage' => null,
-                        ]);
-                    })
                     ->action(function (ServiceRequest $record, array $data): void {
+                        // Simulate payment processing delay
+                        sleep(2);
+                        
                         Payment::create([
                             'service_request_id' => $record->id,
                             'method' => $data['payment_method'],
@@ -167,14 +229,16 @@ class HouseholdServiceRequestResource extends Resource
                             'status' => 'confirmed',
                             'paid_at' => now(),
                         ]);
+                        
                         $record->update([
                             'status' => 'paid',
                             'payment_status' => 'confirmed',
                             'payment_received_at' => now(),
                         ]);
+                        
                         Notification::make()
-                            ->title('Payment Completed')
-                            ->body('Payment has been sent directly to the company. You can now track the service progress.')
+                            ->title('Payment Successful')
+                            ->body('Your payment has been processed successfully. The service provider will begin work shortly.')
                             ->success()
                             ->send();
                     })

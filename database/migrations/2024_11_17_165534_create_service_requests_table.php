@@ -44,8 +44,13 @@ return new class extends Migration {
             $table->time('scheduled_time')->nullable(); // Scheduled service time
 
             $table->decimal('estimated_cost', 12, 2)->nullable(); // Estimated cost
-            $table->text('description')->nullable(); // Additional notes or description
+            $table->text('description')->nullable();
+            $table->string('waste_photos')->nullable(); 
+            $table->string('household_completion_photos')->nullable(); 
 
+            $table->string('household_completion_notes')->nullable(); 
+
+            
             $table->decimal('payment_amount', 12, 2)->nullable(); // Payment amount
             $table->string('payment_status')->nullable(); // Status of payment
 
